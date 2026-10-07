@@ -1,0 +1,18 @@
+# EXAMPLE ONLY — not loaded by OPA (extension is .example).
+# rego-2 bundle: same agent, tighter rule. travel-concierge can notify
+# but can no longer rebook, without any code change in gateway/.
+# To demo: copy this to authz.rego and restart opa, then rebook_flight -> ACTION_NOT_ALLOWED.
+package governance.authz
+
+default allow = false
+
+agents := {
+  "travel-concierge": ["send_notification"],
+  "claims-assistant": ["rebook_flight", "change_hotel", "send_notification"],
+  "refund-agent": ["send_notification"],
+}
+
+allow {
+  some i
+  agents[input.agent_id][i] == input.action
+}

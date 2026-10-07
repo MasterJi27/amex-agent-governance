@@ -1,0 +1,6 @@
+uvicorn>=0.34
+redis>=5.0
+psycopg[binary]>=3.2
+httpx>=0.28
+pytest>=8.3
+mcp>=1.9

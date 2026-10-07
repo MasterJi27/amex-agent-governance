@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-amex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-amex}
+      POSTGRES_DB: ${POSTGRES_DB:-amex}
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U amex -d amex"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  opa:
+    image: openpolicyagent/opa:0.70.0
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "/policies"]
+    volumes:
+      - ../policies:/policies:ro
+    ports:
+      - "8181:8181"
+
+  governance:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-amex}:${POSTGRES_PASSWORD:-amex}@postgres:5432/${POSTGRES_DB:-amex}
+      REDIS_URL: redis://redis:6379/0
+      OPA_URL: http://opa:8181
+      POLICY_VERSION: rego-1
+      PORT: "8001"
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      opa:
+        condition: service_started
+
+  governance-web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8001
+    ports:
+      - "5173:80"
